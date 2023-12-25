@@ -12,7 +12,7 @@ new_key_type! { pub struct ToplevelKey; }
 pub enum ToplevelMessage {
     GetToplevels { reply_to: oneshot::Sender<Vec<ToplevelKey>> },
     GetToplevelMeta { key: ToplevelKey, reply_to: oneshot::Sender<Option<ToplevelMeta>> },
-    SetFocus { key: ToplevelKey, reply_to: oneshot::Sender<Result<bool, ToplevelHandlerError>> },
+    Activate { key: ToplevelKey, reply_to: oneshot::Sender<Result<bool, ToplevelHandlerError>> },
     SetFullscreen { key: ToplevelKey, reply_to: oneshot::Sender<Result<bool, ToplevelHandlerError>> },
     SetMaximize { key: ToplevelKey, reply_to: oneshot::Sender<Result<bool, ToplevelHandlerError>> },
     SetMinimize { key: ToplevelKey, reply_to: oneshot::Sender<Result<bool, ToplevelHandlerError>> },
@@ -47,6 +47,7 @@ pub struct Toplevel {
 pub struct ToplevelMeta {
     app_id: String,
     title: String,
+    state: Option<Vec<u8>>,
 }
 
 impl Toplevel {
@@ -151,12 +152,13 @@ impl ToplevelHandler {
                                 Some(t) => Some(ToplevelMeta {
                                     app_id: t.app_id.clone(),
                                     title: t.title.clone(),
+                                    state: t.state.clone(),
                                 }),
                                 None => None,
                             };
                             let _ = reply_to.send(toplevel_meta);
                         },
-                        ToplevelMessage::SetFocus { key, reply_to } => {
+                        ToplevelMessage::Activate { key, reply_to } => {
                             let toplevel = toplevel_state.toplevels.get_mut(key);
                             let result = match toplevel {
                                 Some(t) => {
