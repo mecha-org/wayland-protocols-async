@@ -63,7 +63,7 @@ impl Toplevel {
 
 
 pub struct ToplevelState {
-    toplevel_tx: Sender<ToplevelEvent>,
+    event_tx: Sender<ToplevelEvent>,
     seat: Option<WlSeat>,
     output: Option<WlOutput>,
     toplevels: SlotMap<ToplevelKey, Toplevel>,
@@ -75,12 +75,13 @@ pub struct ToplevelHandler {
 }
 
 impl ToplevelHandler {
-    pub fn new(toplevel_tx: Sender<ToplevelEvent>) -> Self {
+    pub fn new(event_tx: Sender<ToplevelEvent>) -> Self {
         let conn = wayland_client::Connection::connect_to_env()
             .map_err(|_| "could not connect to wayland socket, try setting WAYLAND_DISPLAY.")
             .unwrap();
         let (globals, mut event_queue) = globals::registry_queue_init::<ToplevelState>(&conn).unwrap();
         let qh = event_queue.handle();
+
         let _toplevel_manager = globals
             .bind::<ZwlrForeignToplevelManagerV1, _, _>(&qh, core::ops::RangeInclusive::new(3, 3), ())
             .map_err(|_| "compositor does not implement foreign toplevel manager (v3).").unwrap();
@@ -93,8 +94,9 @@ impl ToplevelHandler {
             .bind::<WlOutput, _, _>(&qh, core::ops::RangeInclusive::new(1, 1), ())
             .map_err(|_| "failed to retrieve the output from global.")
             .unwrap();
+
         let mut state = ToplevelState {
-            toplevel_tx,
+            event_tx,
             seat: Some(seat),
             output: Some(output),
             toplevels: SlotMap::with_key(),
@@ -108,7 +110,7 @@ impl ToplevelHandler {
         }
     }
 
-    pub async fn run(&mut self, mut toplevel_msg_rx: Receiver<ToplevelMessage>) {
+    pub async fn run(&mut self, mut msg_rx: Receiver<ToplevelMessage>) {
         let event_queue = &mut self.event_queue;
         let mut toplevel_state = &mut self.state;
     
@@ -139,7 +141,7 @@ impl ToplevelHandler {
                         // Err(e) => eprintln!("error reading event {}", e),
                     }
                 },
-                msg = toplevel_msg_rx.recv() => {
+                msg = msg_rx.recv() => {
                     if msg.is_none() {
                         continue;
                     }
@@ -301,10 +303,10 @@ impl ToplevelHandler {
 }
 
 impl ToplevelState {
-    fn send(&self, message: ToplevelEvent) {
-        let tx = self.toplevel_tx.clone();
+    fn dispatch_event(&self, event: ToplevelEvent) {
+        let tx = self.event_tx.clone();
         tokio::task::spawn(async move {
-            let _ = tx.send(message).await;
+            let _ = tx.send(event).await;
         });
     }
 }
@@ -383,7 +385,7 @@ impl Dispatch<ZwlrForeignToplevelManagerV1, ()> for ToplevelState {
                 *user_data.lock().unwrap() = Some(toplevel_key);
 
                 // send event
-                state.send(ToplevelEvent::Created { key: toplevel_key });
+                state.dispatch_event(ToplevelEvent::Created { key: toplevel_key });
             },
             zwlr_foreign_toplevel_manager_v1::Event::Finished => {}
             _ => (),
@@ -414,7 +416,7 @@ impl Dispatch<ZwlrForeignToplevelHandleV1, Mutex<Option<ToplevelKey>>> for Tople
                     .unwrap();
                 toplevel.title = title.clone();
 
-                state.send(ToplevelEvent::Title { key: toplevel_key, title });
+                state.dispatch_event(ToplevelEvent::Title { key: toplevel_key, title });
             },
             zwlr_foreign_toplevel_handle_v1::Event::AppId { app_id } => {
                 let toplevel_key = key.lock().unwrap().unwrap();
@@ -424,7 +426,7 @@ impl Dispatch<ZwlrForeignToplevelHandleV1, Mutex<Option<ToplevelKey>>> for Tople
                     .unwrap();
                 toplevel.app_id = app_id.clone();
 
-                state.send(ToplevelEvent::AppId { key: toplevel_key, app_id });
+                state.dispatch_event(ToplevelEvent::AppId { key: toplevel_key, app_id });
             },
             zwlr_foreign_toplevel_handle_v1::Event::State { state: toplevel_state } => {
                 let toplevel_key = key.lock().unwrap().unwrap();
@@ -434,7 +436,7 @@ impl Dispatch<ZwlrForeignToplevelHandleV1, Mutex<Option<ToplevelKey>>> for Tople
                     .unwrap();
                 toplevel.state = Some(toplevel_state.clone());
 
-                state.send(ToplevelEvent::State { key: toplevel_key, state: toplevel_state });
+                state.dispatch_event(ToplevelEvent::State { key: toplevel_key, state: toplevel_state });
             },
             zwlr_foreign_toplevel_handle_v1::Event::Done => {
                 let toplevel_key = key.lock().unwrap().unwrap();
@@ -446,7 +448,7 @@ impl Dispatch<ZwlrForeignToplevelHandleV1, Mutex<Option<ToplevelKey>>> for Tople
                 let app_id = toplevel.app_id.clone();
                 let toplevel_state = toplevel.state.clone();
 
-                state.send(ToplevelEvent::Done { key: toplevel_key, title, app_id, state: toplevel_state });
+                state.dispatch_event(ToplevelEvent::Done { key: toplevel_key, title, app_id, state: toplevel_state });
             },
             zwlr_foreign_toplevel_handle_v1::Event::Closed => {
                 let toplevel_key = key.lock().unwrap().unwrap();
@@ -458,19 +460,19 @@ impl Dispatch<ZwlrForeignToplevelHandleV1, Mutex<Option<ToplevelKey>>> for Tople
                 // removing from state, you cannot use the toplevel after that
                 state.toplevels.remove(toplevel_key);
                 
-                state.send(ToplevelEvent::Closed { key: toplevel_key });
+                state.dispatch_event(ToplevelEvent::Closed { key: toplevel_key });
             },
             zwlr_foreign_toplevel_handle_v1::Event::OutputEnter { output } => {
                 let toplevel_key = key.lock().unwrap().unwrap();
-                state.send(ToplevelEvent::OutputEnter { key: toplevel_key, output });
+                state.dispatch_event(ToplevelEvent::OutputEnter { key: toplevel_key, output });
             },
             zwlr_foreign_toplevel_handle_v1::Event::OutputLeave { output } => {
                 let toplevel_key = key.lock().unwrap().unwrap();
-                state.send(ToplevelEvent::OutputLeave { key: toplevel_key, output });
+                state.dispatch_event(ToplevelEvent::OutputLeave { key: toplevel_key, output });
             },
             zwlr_foreign_toplevel_handle_v1::Event::Parent { parent } => {
                 let toplevel_key = key.lock().unwrap().unwrap();
-                state.send(ToplevelEvent::Parent { key: toplevel_key, parent });
+                state.dispatch_event(ToplevelEvent::Parent { key: toplevel_key, parent });
             },
             _ => todo!(),
         }

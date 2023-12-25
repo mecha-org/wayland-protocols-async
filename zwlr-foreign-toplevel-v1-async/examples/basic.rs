@@ -1,8 +1,8 @@
 use std::time::Duration;
 
 use tokio::{sync::{mpsc, oneshot}, time::sleep};
-extern crate wlr_foreign_toplevel_async;
-use wlr_foreign_toplevel_async::handler::{ToplevelHandler, ToplevelMessage};
+extern crate zwlr_foreign_toplevel_v1_async;
+use zwlr_foreign_toplevel_v1_async::handler::{ToplevelHandler, ToplevelMessage};
 
 #[tokio::main]
 async fn main() {

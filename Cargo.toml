@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 default-members = []
-members = ["wlr-foreign-toplevel-async"]
+members = ["zwlr-foreign-toplevel-v1-async", "zwp-input-method-v2-async"]
 
 [workspace.package]
 version = "1.0.0"
