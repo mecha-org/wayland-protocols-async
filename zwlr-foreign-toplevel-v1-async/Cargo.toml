@@ -1,0 +1,17 @@
+[package]
+name = "zwlr-foreign-toplevel-v1-async"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+slotmap = "1.0.7"
+tokio = { version="1.35.1", features=["time", "net", "process", "sync", "rt-multi-thread", "macros"] }
+wayland-client = "0.31.1"
+wayland-protocols = "0.31.0"
+wayland-protocols-wlr = { version="0.2.0", features=["client"]}
