@@ -22,13 +22,53 @@ pub enum ToplevelMessage {
     Close { key: ToplevelKey, reply_to: oneshot::Sender<Result<bool, ToplevelHandlerError>> },
 }
 
+#[derive(Debug, Clone)]
+pub enum ToplevelWState {
+    Maximized = 0,
+    Minimized = 1,
+    Activated = 2,
+    Fullscreen = 3
+}
+
+fn map_state_to_wstate(state: Vec<u8>) -> Vec<ToplevelWState> {
+    let mut wstate: Vec<ToplevelWState> = vec![];
+    let mut state_iter = state
+    .chunks_exact(4)
+    .map(|b| u32::from_ne_bytes(b.try_into().unwrap()));
+
+    let is_maximized = state_iter.clone().any(|s| s == zwlr_foreign_toplevel_handle_v1::State::Maximized as u32);
+    let is_minimized = state_iter.clone().any(|s| s == zwlr_foreign_toplevel_handle_v1::State::Minimized as u32);
+    let is_activated = state_iter.clone().any(|s| s == zwlr_foreign_toplevel_handle_v1::State::Activated as u32);
+    let is_fullscreen = state_iter.clone().any(|s| s == zwlr_foreign_toplevel_handle_v1::State::Fullscreen as u32);
+
+    if is_maximized {
+        wstate.push(ToplevelWState::Maximized);
+    }
+    
+    if is_minimized {
+        wstate.push(ToplevelWState::Minimized);
+    }
+
+    if is_activated {
+        wstate.push(ToplevelWState::Activated);
+    }
+
+    if is_fullscreen {
+        wstate.push(ToplevelWState::Fullscreen);
+    }
+
+    println!("base state {:?} {:?} {:?}", state, wstate, is_activated);
+
+    wstate
+}
+
 #[derive(Debug)]
 pub enum ToplevelEvent {
     Created { key: ToplevelKey },
     Title { key: ToplevelKey, title: String },
     AppId { key: ToplevelKey, app_id: String },
-    Done { key: ToplevelKey, title: String, app_id: String, state: Option<Vec<u8>> },
-    State { key: ToplevelKey, state: Vec<u8> },
+    Done { key: ToplevelKey, title: String, app_id: String, state: Option<Vec<ToplevelWState>> },
+    State { key: ToplevelKey, state: Vec<ToplevelWState> },
     Closed { key: ToplevelKey },
     OutputEnter { key: ToplevelKey, output: WlOutput },
     OutputLeave { key: ToplevelKey, output: WlOutput },
@@ -39,7 +79,7 @@ pub enum ToplevelEvent {
 pub struct Toplevel {
     pub title: String,
     pub app_id: String,
-    pub state: Option<Vec<u8>>,
+    pub state: Option<Vec<ToplevelWState>>,
     _handle: ZwlrForeignToplevelHandleV1,
 }
 
@@ -47,7 +87,7 @@ pub struct Toplevel {
 pub struct ToplevelMeta {
     app_id: String,
     title: String,
-    state: Option<Vec<u8>>,
+    state: Option<Vec<ToplevelWState>>,
 }
 
 impl Toplevel {
@@ -384,6 +424,8 @@ impl Dispatch<ZwlrForeignToplevelManagerV1, ()> for ToplevelState {
                 let user_data: &Mutex<Option<ToplevelKey>> = toplevel.data().unwrap();
                 *user_data.lock().unwrap() = Some(toplevel_key);
 
+                // toplevel.set_fullscreen(None);
+
                 // send event
                 state.dispatch_event(ToplevelEvent::Created { key: toplevel_key });
             },
@@ -434,9 +476,10 @@ impl Dispatch<ZwlrForeignToplevelHandleV1, Mutex<Option<ToplevelKey>>> for Tople
                     .toplevels
                     .get_mut(toplevel_key)
                     .unwrap();
+                let toplevel_state = map_state_to_wstate(toplevel_state);
                 toplevel.state = Some(toplevel_state.clone());
 
-                state.dispatch_event(ToplevelEvent::State { key: toplevel_key, state: toplevel_state });
+                state.dispatch_event(ToplevelEvent::State { key: toplevel_key, state: toplevel_state.clone() });
             },
             zwlr_foreign_toplevel_handle_v1::Event::Done => {
                 let toplevel_key = key.lock().unwrap().unwrap();
