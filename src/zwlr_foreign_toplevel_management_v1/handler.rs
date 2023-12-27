@@ -1,10 +1,10 @@
-use std::{sync::Mutex, collections::HashMap};
+use std::{sync::Mutex};
 use slotmap::{new_key_type, SlotMap};
 use tokio::{sync::{mpsc::{Sender, Receiver}, oneshot}, io::unix::AsyncFd};
 use wayland_client::{EventQueue, protocol::{wl_seat::{WlSeat, self}, wl_registry::{WlRegistry, self}, wl_output::{WlOutput, self}}, globals::{self, GlobalListContents}, Connection, QueueHandle, Dispatch, event_created_child, Proxy};
 use wayland_protocols_wlr::foreign_toplevel::v1::client::{zwlr_foreign_toplevel_manager_v1::{ZwlrForeignToplevelManagerV1, self}, zwlr_foreign_toplevel_handle_v1::{ZwlrForeignToplevelHandleV1, self}};
 
-use crate::errors::{ToplevelHandlerError, ToplevelHandlerErrorCodes};
+use super::errors::{ToplevelHandlerError, ToplevelHandlerErrorCodes};
 
 new_key_type! { pub struct ToplevelKey; }
 

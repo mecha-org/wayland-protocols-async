@@ -1,8 +1,6 @@
 use std::time::Duration;
-
 use tokio::{sync::{mpsc, oneshot}, time::sleep};
-extern crate zwp_input_method_v2_async;
-use zwp_input_method_v2_async::handler::{InputMethodHandler, InputMethodMessage};
+use wayland_protocols_async::zwp_input_method_v2::handler::InputMethodHandler;
 
 #[tokio::main]
 async fn main() {

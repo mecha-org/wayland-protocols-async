@@ -5,7 +5,6 @@ use slotmap::{new_key_type, SlotMap};
 use tokio::{sync::{mpsc::{Sender, Receiver}, oneshot}, io::unix::AsyncFd};
 use wayland_client::{EventQueue, protocol::{wl_seat::{WlSeat, self}, wl_registry::{WlRegistry, self}, wl_output::{WlOutput, self}}, globals::{self, GlobalListContents}, Connection, QueueHandle, Dispatch, WEnum};
 use wayland_protocols_misc::zwp_input_method_v2::client::{zwp_input_method_manager_v2::{ZwpInputMethodManagerV2, self}, zwp_input_method_v2::{self, ZwpInputMethodV2}};
-// use crate::errors::{InputMethodHandlerError, InputMethodHandlerErrorCodes};
 
 #[derive(Debug)]
 pub enum InputMethodMessage {
