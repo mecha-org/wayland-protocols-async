@@ -1,9 +1,6 @@
-[workspace]
+[package]
+name = "wayland-protocols-async"
 resolver = "2"
-default-members = []
-members = ["zwlr-foreign-toplevel-v1-async", "zwp-input-method-v2-async"]
-
-[workspace.package]
 version = "1.0.0"
 authors = ["Shoaib Merchant <shoaibm@mechasystems.com>"]
 description = "Wayland client protocols implemented in async as handlers using the Actor-model and tokio messaging"
@@ -12,3 +9,10 @@ edition = "2021"
 license = "MIT"
 repository = "https://github.com/mecha-org/wayland-async"
 homepage = "https://mecha.so"
+
+[dependencies]
+slotmap = "1.0.7"
+tokio = { version="1.35.1", features=["time", "net", "process", "sync", "rt-multi-thread", "macros"] }
+wayland-client = "0.31.1"
+wayland-protocols = "0.31.0"
+wayland-protocols-wlr = { version="0.2.0", features=["client"]}

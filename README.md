@@ -23,7 +23,7 @@ List of events that can be received from the toplevel handler are
 - **`Title`** - When a toplevel's `title` is updated
 - **`AppId`** - When a toplevel `app_id` is updated
 - **`Done`** - When all changes in the state are sent
-- **`State`** - When the toplevel's state is updated, you can map the state based on this [enum](https://wayland.app/protocols/wlr-foreign-toplevel-management-unstable-v1#zwlr_foreign_toplevel_handle_v1:enum:state0)
+- **`State`** - When the toplevel's state is updated, the state is mapped base on this [enum](https://wayland.app/protocols/wlr-foreign-toplevel-management-unstable-v1#zwlr_foreign_toplevel_handle_v1:enum:state0)
 - **`Closed`** - When a toplevel is closed
 - **`OutputEnter`** - When a toplevel becomes visible on an output
 - **`OutputLeave`** - When a toplevel stops becoming visible on an output
