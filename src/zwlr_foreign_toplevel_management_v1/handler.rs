@@ -22,7 +22,7 @@ pub enum ToplevelMessage {
     Close { key: ToplevelKey, reply_to: oneshot::Sender<Result<bool, ToplevelHandlerError>> },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ToplevelWState {
     Maximized = 0,
     Minimized = 1,
