@@ -1,8 +1,7 @@
-use num_derive::FromPrimitive;
-use num_traits::FromPrimitive;
 use tokio::{sync::mpsc::{Sender, Receiver}, io::unix::AsyncFd};
-use wayland_client::{EventQueue, protocol::{wl_seat::{WlSeat, self}, wl_registry::{WlRegistry, self}, wl_output::{WlOutput, self}}, globals::{self, GlobalListContents}, Connection, QueueHandle, Dispatch, WEnum};
-use wayland_protocols_misc::zwp_input_method_v2::client::{zwp_input_method_manager_v2::{ZwpInputMethodManagerV2, self}, zwp_input_method_v2::{self, ZwpInputMethodV2}};
+use wayland_client::{EventQueue, protocol::{wl_seat::{WlSeat, self}, wl_registry::{WlRegistry, self}, wl_output::{WlOutput, self}}, globals::{self, GlobalListContents}, Connection, QueueHandle, Dispatch, WEnum, backend::protocol::WEnumError};
+use wayland_protocols::wp::text_input::zv3::client::zwp_text_input_v3::{ChangeCause, ContentHint, ContentPurpose};
+use wayland_protocols_misc::zwp_input_method_v2::client::{zwp_input_method_manager_v2::ZwpInputMethodManagerV2, zwp_input_method_v2::{self, ZwpInputMethodV2}};
 
 #[derive(Debug)]
 pub enum InputMethodMessage {
@@ -20,94 +19,9 @@ pub enum InputMethodEvent {
     Deactivate,
     Done,
     SurroundingText { text: String, cursor: u32, anchor: u32 },
-    TextChangeCause { cause: WEnum<ChangeCause> },
-    ContentType { hint: WEnum<ContentHint>, purpose: WEnum<ContentPurpose>},
+    TextChangeCause { cause: Result<ChangeCause, WEnumError> },
+    ContentType { hint: Result<ContentHint, WEnumError>, purpose: Result<ContentPurpose, WEnumError>},
     Unavailable,
-}
-
-#[derive(Debug, FromPrimitive)]
-#[repr(u32)]
-pub enum ChangeCause {
-    InputMethod = 0,
-}
-
-fn map_change_cause_to_wenum(cause: u32) -> WEnum<ChangeCause> {
-    match FromPrimitive::from_u32(cause) {
-        Some(ChangeCause::InputMethod) => WEnum::Value(ChangeCause::InputMethod),
-        None            => WEnum::Unknown(u32::from(cause)),
-    }
-}
-
-#[derive(Debug, FromPrimitive)]
-#[repr(u32)]
-pub enum ContentHint {
-    None = 0,
-    Completion = 0x1,
-    SpellCheck = 0x2,
-    AutoCapitalization = 0x4,
-    Lowercase = 0x8,
-    Uppercase = 0x10,
-    Titlecase = 0x20,
-    HiddenText = 0x40,
-    SensitiveData = 0x80,
-    Latin = 0x100,
-    Multiline = 0x200,
-}
-
-fn map_content_hint_to_wenum(hint: u32) -> WEnum<ContentHint> {
-    match FromPrimitive::from_u32(hint) {
-        Some(ContentHint::None) => WEnum::Value(ContentHint::None),
-        Some(ContentHint::Completion) => WEnum::Value(ContentHint::Completion),
-        Some(ContentHint::SpellCheck) => WEnum::Value(ContentHint::SpellCheck),
-        Some(ContentHint::AutoCapitalization) => WEnum::Value(ContentHint::AutoCapitalization),
-        Some(ContentHint::Lowercase) => WEnum::Value(ContentHint::Lowercase),
-        Some(ContentHint::Uppercase) => WEnum::Value(ContentHint::Uppercase),
-        Some(ContentHint::Titlecase) => WEnum::Value(ContentHint::Titlecase),
-        Some(ContentHint::HiddenText) => WEnum::Value(ContentHint::HiddenText),
-        Some(ContentHint::SensitiveData) => WEnum::Value(ContentHint::SensitiveData),
-        Some(ContentHint::Latin) => WEnum::Value(ContentHint::Latin),
-        Some(ContentHint::Multiline) => WEnum::Value(ContentHint::Multiline),
-        None            => WEnum::Unknown(u32::from(hint)),
-    }
-}
-
-#[derive(Debug, FromPrimitive)]
-#[repr(u32)]
-pub enum ContentPurpose {
-    Normal = 0,
-    Alpha = 1,
-    Digits = 2,
-    Number = 3,
-    Phone = 4,
-    Url = 5,
-    Email = 6,
-    Name = 7,
-    Password = 8,
-    Pin = 9,
-    Date = 10,
-    Time = 11,
-    DateTime = 12,
-    Terminal = 13,
-}
-
-fn map_content_purpose_to_wenum(cause: u32) -> WEnum<ContentPurpose> {
-    match FromPrimitive::from_u32(cause) {
-        Some(ContentPurpose::Normal) => WEnum::Value(ContentPurpose::Normal),
-        Some(ContentPurpose::Alpha) => WEnum::Value(ContentPurpose::Alpha),
-        Some(ContentPurpose::Digits) => WEnum::Value(ContentPurpose::Digits),
-        Some(ContentPurpose::Number) => WEnum::Value(ContentPurpose::Number),
-        Some(ContentPurpose::Phone) => WEnum::Value(ContentPurpose::Phone),
-        Some(ContentPurpose::Url) => WEnum::Value(ContentPurpose::Url),
-        Some(ContentPurpose::Email) => WEnum::Value(ContentPurpose::Email),
-        Some(ContentPurpose::Name) => WEnum::Value(ContentPurpose::Name),
-        Some(ContentPurpose::Password) => WEnum::Value(ContentPurpose::Password),
-        Some(ContentPurpose::Pin) => WEnum::Value(ContentPurpose::Pin),
-        Some(ContentPurpose::Date) => WEnum::Value(ContentPurpose::Date),
-        Some(ContentPurpose::Time) => WEnum::Value(ContentPurpose::Time),
-        Some(ContentPurpose::DateTime) => WEnum::Value(ContentPurpose::DateTime),
-        Some(ContentPurpose::Terminal) => WEnum::Value(ContentPurpose::Terminal),
-        None            => WEnum::Unknown(u32::from(cause)),
-    }
 }
 
 pub struct InputMethodState {
@@ -315,13 +229,13 @@ impl Dispatch<ZwpInputMethodV2, ()> for InputMethodState {
                 state.dispatch_event(InputMethodEvent::SurroundingText { text, cursor, anchor }),
             zwp_input_method_v2::Event::TextChangeCause { cause } => {
                 state.dispatch_event(InputMethodEvent::TextChangeCause {
-                    cause: map_change_cause_to_wenum(u32::from(cause))
+                    cause: cause.into_result()
                 })
             },
             zwp_input_method_v2::Event::ContentType { hint, purpose } => {
                 state.dispatch_event(InputMethodEvent::ContentType {
-                    hint: map_content_hint_to_wenum(u32::from(hint)),
-                    purpose: map_content_purpose_to_wenum(u32::from(purpose)),
+                    hint: hint.into_result(),
+                    purpose: purpose.into_result(),
                 })
             },
             zwp_input_method_v2::Event::Unavailable =>
