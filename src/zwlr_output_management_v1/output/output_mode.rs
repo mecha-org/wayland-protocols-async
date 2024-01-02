@@ -38,8 +38,6 @@ impl Dispatch<ZwlrOutputModeV1, ()> for OutputManagementState {
             .entry(mode.id())
             .or_insert_with(|| WlOutputMode::new(mode.clone()));
 
-        println!("output_mode_v1::event event={:?}", event);
-
         match event {
             zwlr_output_mode_v1::Event::Size { width, height } => {
                 output_mode.width = width;
@@ -57,13 +55,8 @@ impl Dispatch<ZwlrOutputModeV1, ()> for OutputManagementState {
             },
             zwlr_output_mode_v1::Event::Finished => {
                 mode.release();
-
                 let _ = state.remove_mode(&mode.id());
                 state.dispatch_event(OutputManagementEvent::ModeFinished);
-
-                // if let Err(why) =  {
-                //     tracing::error!(?why, id = ?proxy.id(), "failed to remove mode");
-                // }
             },
             _ => {}
         }

@@ -81,14 +81,12 @@ pub struct OutputModeMeta {
 pub struct OutputManagementState {
     qh: QueueHandle<OutputManagementState>,
     event_tx: Sender<OutputManagementEvent>,
-    output: WlOutput,
     pub output_manager: ZwlrOutputManagerV1,
     pub output_manager_serial: Option<u32>,
     pub output_heads: HashMap<ObjectId, WlOutputHead>,
     pub output_modes: HashMap<ObjectId, WlOutputMode>,
     pub output_configuration: Option<ZwlrOutputConfigurationV1>,
     pub mode_to_head_ids: HashMap<ObjectId, ObjectId>,
-    seat: WlSeat,
 }
 
 pub struct OutputManagementHandler {
@@ -107,20 +105,10 @@ impl OutputManagementHandler {
         let output_manager = globals
             .bind::<ZwlrOutputManagerV1, _, _>(&qh, core::ops::RangeInclusive::new(4, 4), ())
             .map_err(|_| "compositor does not implement output manager (v4).").unwrap();
-        let seat = globals
-            .bind::<WlSeat, _, _>(&qh, core::ops::RangeInclusive::new(1, 1), ())
-            .map_err(|_| "failed to retrieve the seat from global.")
-            .unwrap();
-        let output = globals
-            .bind::<WlOutput, _, _>(&qh, core::ops::RangeInclusive::new(1, 1), ())
-            .map_err(|_| "failed to retrieve the output from global.")
-            .unwrap();
 
         let mut state = OutputManagementState {
             event_tx,
             qh,
-            seat,
-            output,
             output_manager,
             output_manager_serial: None,
             output_heads: HashMap::new(),
@@ -526,46 +514,5 @@ impl Dispatch<WlRegistry, GlobalListContents> for OutputManagementState {
         _: &GlobalListContents,
         _: &Connection,
         qh: &QueueHandle<OutputManagementState>,
-    ) {
-        if let wl_registry::Event::Global {
-            name,
-            interface,
-            version,
-        } = event
-        {
-            if interface == "wl_seat" {
-                registry.bind::<WlSeat, (), OutputManagementState>(name, version, qh, ());
-            }
-        }
-    }
-}
-
-impl Dispatch<WlSeat, ()> for OutputManagementState {
-    fn event(
-        state: &mut Self,
-        seat: &WlSeat,
-        event: wl_seat::Event,
-        _: &(),
-        _: &Connection,
-        _: &QueueHandle<OutputManagementState>,
-    ) {
-        if let wl_seat::Event::Name { .. } = event {
-            state.seat = seat.to_owned();
-        }
-    }
-}
-
-impl Dispatch<WlOutput, ()> for OutputManagementState {
-    fn event(
-        state: &mut Self,
-        output: &WlOutput,
-        event: wl_output::Event,
-        _: &(),
-        _: &Connection,
-        _: &QueueHandle<OutputManagementState>,
-    ) {
-        if let wl_output::Event::Name { .. } = event {
-            state.output = output.to_owned();
-        }
-    }
+    ) {}
 }

@@ -14,8 +14,6 @@ impl Dispatch<ZwlrOutputConfigurationV1, ()> for OutputManagementState {
         _conn: &Connection,
         _handle: &QueueHandle<Self>,
     ) {
-        println!("output_configuration_v1::event event={:?}", event);
-
         match event {
             zwlr_output_configuration_v1::Event::Succeeded => {
                 state.dispatch_event(OutputManagementEvent::ConfigurationSucceeded);

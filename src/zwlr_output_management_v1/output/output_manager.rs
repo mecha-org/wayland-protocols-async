@@ -12,8 +12,6 @@ impl Dispatch<ZwlrOutputManagerV1, ()> for OutputManagementState {
         _: &Connection,
         _: &QueueHandle<Self>,
     ) {
-        println!("output_manager_v1::event event={:?}", event);
-
         match event {
             zwlr_output_manager_v1::Event::Head { head } => {
                 let head_id = head.clone().id();
