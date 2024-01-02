@@ -11,7 +11,5 @@ impl Dispatch<ZwlrOutputConfigurationHeadV1, ()> for OutputManagementState {
         _data: &(),
         _conn: &Connection,
         _handle: &QueueHandle<Self>,
-    ) {
-        println!("output_configuration_head_v1::event event={:?}", event);
-    }
+    ) {}
 }

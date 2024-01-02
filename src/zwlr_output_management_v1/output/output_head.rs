@@ -62,8 +62,6 @@ impl Dispatch<ZwlrOutputHeadV1, ()> for OutputManagementState {
             .entry(head.id())
             .or_insert_with(|| WlOutputHead::new(head.clone()));
 
-        println!("output_head_v1::event event={:?}", event);
-
         match event {
             zwlr_output_head_v1::Event::Name { name } => {
                 output_head.name = name.clone();

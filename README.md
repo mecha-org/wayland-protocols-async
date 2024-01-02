@@ -95,6 +95,20 @@ Implements the [`zwlr-output-management-unstable-v1 (ver: 4)`](https://wayland.a
 - **`ConfigurationCancelled`** - Sent if the compositor cancels a configuration request due to any change in the output
 
 
+
+## Session Lock
+Implements the [`ext-session-lock-v1 (ver: 1)`](https://wayland.app/protocols/ext-session-lock-v1) protocol. This protocol enables you to lock and unlock the session alongwith options to reconfigure the locked surface (updating). You can pass a custom `wl_surface` to the handler else the handler will create an empty surface.
+
+## Messages
+- **`Lock`** - Locks the session and returns boolean
+- **`Unlock`** - Unlocks the session and returns boolean
+- **`AckConfigure`** - Acknowledge the last configure event (useful for redrawing)
+
+## Events
+- **`Locked`** - When the session is locked
+- **`Finished`** - When the session lock is no longer available and needs to be destroyed
+- **`Configure`** - Sent once the session is locked or if the output geometery changes
+
 ## Examples
 Check the examples for sample on how to use the protocols
 
