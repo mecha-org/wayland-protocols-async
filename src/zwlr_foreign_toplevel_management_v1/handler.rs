@@ -429,7 +429,9 @@ impl Dispatch<ZwlrForeignToplevelManagerV1, ()> for ToplevelState {
                 // send event
                 state.dispatch_event(ToplevelEvent::Created { key: toplevel_key });
             },
-            zwlr_foreign_toplevel_manager_v1::Event::Finished => {}
+            zwlr_foreign_toplevel_manager_v1::Event::Finished => {
+                // TODO: clear the states for toplevel and manager and send event for Finished
+            }
             _ => (),
         }
     }

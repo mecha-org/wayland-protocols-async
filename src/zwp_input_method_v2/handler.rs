@@ -1,8 +1,6 @@
-use std::{sync::Mutex, collections::HashMap};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
-use slotmap::{new_key_type, SlotMap};
-use tokio::{sync::{mpsc::{Sender, Receiver}, oneshot}, io::unix::AsyncFd};
+use tokio::{sync::mpsc::{Sender, Receiver}, io::unix::AsyncFd};
 use wayland_client::{EventQueue, protocol::{wl_seat::{WlSeat, self}, wl_registry::{WlRegistry, self}, wl_output::{WlOutput, self}}, globals::{self, GlobalListContents}, Connection, QueueHandle, Dispatch, WEnum};
 use wayland_protocols_misc::zwp_input_method_v2::client::{zwp_input_method_manager_v2::{ZwpInputMethodManagerV2, self}, zwp_input_method_v2::{self, ZwpInputMethodV2}};
 
