@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use tokio::{sync::{mpsc::{Sender, Receiver}, oneshot}, io::unix::AsyncFd};
 use wayland_client::{EventQueue, protocol::{wl_seat::{WlSeat, self}, wl_registry::{WlRegistry, self}, wl_output::{WlOutput, self, Transform}}, globals::{self, GlobalListContents}, Connection, QueueHandle, Dispatch, backend::{ObjectId, protocol::WEnumError}};
 use wayland_protocols_wlr::output_management::v1::client::{zwlr_output_manager_v1::ZwlrOutputManagerV1, zwlr_output_configuration_v1::ZwlrOutputConfigurationV1, zwlr_output_head_v1::AdaptiveSyncState, zwlr_output_configuration_head_v1::ZwlrOutputConfigurationHeadV1};
-
 use super::errors::{OutputManagementHandlerError, OutputManagementHandlerErrorCodes};
 use crate::zwlr_output_management_v1::output::{output_head::WlOutputHead, output_mode::WlOutputMode};
 

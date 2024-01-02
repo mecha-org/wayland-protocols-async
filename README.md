@@ -99,5 +99,5 @@ Implements the [`zwlr-output-management-unstable-v1 (ver: 4)`](https://wayland.a
 Check the examples for sample on how to use the protocols
 
 ## Credits
-[`wayland.rs`](https://github.com/smithay/wayland-rs) - This project depends extensively on `smithay/wayland.rs` for its implementation of all wayland (stable, unstable, wlr, misc) protocols in rust.
-[`cosmic-randr`](https://github.com/pop-os/cosmic-randr) - For showing how to get managing events and state right for output management
+- [`wayland.rs`](https://github.com/smithay/wayland-rs) - This project depends extensively on `smithay/wayland.rs` for its implementation of all wayland (stable, unstable, wlr, misc) protocols in rust.
+- [`cosmic-randr`](https://github.com/pop-os/cosmic-randr) - For showing how to get managing events and state right for output management
