@@ -11,7 +11,7 @@ async fn main() {
     let (session_lock_event_tx, mut session_lock_event_rx) = mpsc::channel(128);
     
     // create the handler instance
-    let mut session_lock_handler = SessionLockHandler::new(session_lock_event_tx, None);
+    let mut session_lock_handler = SessionLockHandler::new(session_lock_event_tx);
 
 
     // start the session_lock handler
@@ -31,27 +31,11 @@ async fn main() {
     });
 
     // send an event
-    let session_lock_send_t = tokio::spawn(async move {
+    let _ = tokio::spawn(async move {
         // trigger lock
         let _ = sleep(Duration::from_secs(5)).await;
         let (tx, rx) = oneshot::channel();
-        let _ =session_lock_msg_tx.send(SessionLockMessage::Lock { reply_to: tx }).await;
-
-        let res = rx.await.expect("no reply from session_lock handler");
-        println!("locked session {:?}", res);
-
-        // trigger unlock
-        let _ = sleep(Duration::from_secs(5)).await;
-        let (tx, rx) = oneshot::channel();
-        let _ =session_lock_msg_tx.send(SessionLockMessage::Unlock { reply_to: tx }).await;
-
-        let res = rx.await.expect("no reply from session_lock handler");
-        println!("unlocked session {:?}", res);
-
-        // trigger lock
-        let _ = sleep(Duration::from_secs(5)).await;
-        let (tx, rx) = oneshot::channel();
-        let _ =session_lock_msg_tx.send(SessionLockMessage::Lock { reply_to: tx }).await;
+        let _ =session_lock_msg_tx.send(SessionLockMessage::Lock { wl_surface: None, reply_to: tx }).await;
 
         let res = rx.await.expect("no reply from session_lock handler");
         println!("locked session {:?}", res);

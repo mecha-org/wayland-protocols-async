@@ -8,7 +8,7 @@ use super::errors::{SessionLockhandlerError, SessionLockhandlerErrorCodes};
 
 #[derive(Debug)]
 pub enum SessionLockMessage {
-    Lock { reply_to: oneshot::Sender<Result<bool, SessionLockhandlerError>> },
+    Lock { wl_surface: Option<WlSurface>, reply_to: oneshot::Sender<Result<bool, SessionLockhandlerError>> },
     Unlock { reply_to: oneshot::Sender<Result<bool, SessionLockhandlerError>> },
     AckConfigure { reply_to: oneshot::Sender<Result<bool, SessionLockhandlerError>> },
 }
@@ -39,7 +39,7 @@ pub struct SessionLockHandler {
 }
 
 impl SessionLockHandler {
-    pub fn new(event_tx: Sender<SessionLockEvent>, wl_surface: Option<WlSurface>) -> Self {
+    pub fn new(event_tx: Sender<SessionLockEvent>) -> Self {
         let conn = wayland_client::Connection::connect_to_env()
             .map_err(|_| "could not connect to wayland socket, try setting WAYLAND_DISPLAY.")
             .unwrap();
@@ -68,7 +68,7 @@ impl SessionLockHandler {
             seat: Some(seat),
             output: Some(output),
             compositor: Some(compositor),
-            surface: Some(wl_surface.unwrap_or(surface)),
+            surface: Some(surface),
             session_lock_manager: Some(session_lock_manager),
             session_lock: None,
             session_lock_surface: None,
@@ -119,8 +119,8 @@ impl SessionLockHandler {
                         continue;
                     }
                     match msg.unwrap() {
-                        SessionLockMessage::Lock { reply_to } => {
-                            let res = session_lock_state.lock();
+                        SessionLockMessage::Lock { wl_surface, reply_to } => {
+                            let res = session_lock_state.lock(wl_surface);
                             let _ = reply_to.send(res);
                         },
                         SessionLockMessage::Unlock { reply_to } => {
@@ -149,7 +149,7 @@ impl SessionLockState {
         });
     }
 
-    fn lock(&mut self) -> Result<bool, SessionLockhandlerError> {
+    fn lock(&mut self, wl_surface: Option<WlSurface>) -> Result<bool, SessionLockhandlerError> {
         let session_lock_manager = match &self.session_lock_manager {
             Some(m) => m,
             None => {
@@ -168,7 +168,8 @@ impl SessionLockState {
                 ));
             },
         };
-        let surface = match &self.surface {
+        // use surface from argument or use internal surface
+        let mut surface = match &self.surface {
             Some(o) => o,
             None => {
                 return Err(SessionLockhandlerError::new(
@@ -177,6 +178,9 @@ impl SessionLockState {
                 ));
             },
         };
+        if wl_surface.is_some() {
+            surface = wl_surface.as_ref().unwrap();
+        }
 
         let session_lock = session_lock_manager.lock(&self.qh, ());
 
@@ -312,15 +316,6 @@ impl Dispatch<WlSurface, ()> for SessionLockState {
         _: &QueueHandle<SessionLockState>,
     ) {
         state.surface = Some(surface.to_owned());
-        println!("wl_surface::event event={:?}", event);
-
-        // match event {
-        //     wl_surface::Event::Enter { output } => todo!(),
-        //     wl_surface::Event::Leave { output } => todo!(),
-        //     wl_surface::Event::PreferredBufferScale { factor } => todo!(),
-        //     wl_surface::Event::PreferredBufferTransform { transform } => todo!(),
-        //     _ => todo!(),
-        // }
     }
 }
 
