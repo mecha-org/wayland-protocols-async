@@ -97,14 +97,14 @@ Implements the [`zwlr-output-management-unstable-v1 (ver: 4)`](https://wayland.a
 
 
 ## Session Lock
-Implements the [`ext-session-lock-v1 (ver: 1)`](https://wayland.app/protocols/ext-session-lock-v1) protocol. This protocol enables you to lock and unlock the session alongwith options to reconfigure the locked surface (updating). You can pass a custom `wl_surface` to the handler else the handler will create an empty surface.
+Implements the [`ext-session-lock-v1 (ver: 1)`](https://wayland.app/protocols/ext-session-lock-v1) protocol. This protocol enables you to lock and unlock the session alongwith options to reconfigure the locked surface (updating). 
 
-## Messages
-- **`Lock`** - Locks the session and returns boolean
+### Messages
+- **`Lock`** - Locks the session and returns boolean. You can pass a custom `wl_surface` to the handler else the handler will create an empty surface.
 - **`Unlock`** - Unlocks the session and returns boolean
 - **`AckConfigure`** - Acknowledge the last configure event (useful for redrawing)
 
-## Events
+### Events
 - **`Locked`** - When the session is locked
 - **`Finished`** - When the session lock is no longer available and needs to be destroyed
 - **`Configure`** - Sent once the session is locked or if the output geometery changes
@@ -114,4 +114,3 @@ Check the examples for sample on how to use the protocols
 
 ## Credits
 - [`wayland.rs`](https://github.com/smithay/wayland-rs) - This project depends extensively on `smithay/wayland.rs` for its implementation of all wayland (stable, unstable, wlr, misc) protocols in rust.
-- [`cosmic-randr`](https://github.com/pop-os/cosmic-randr) - For showing how to get managing events and state right for output management
