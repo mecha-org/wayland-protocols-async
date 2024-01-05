@@ -519,7 +519,7 @@ impl Dispatch<ZwlrForeignToplevelHandleV1, Mutex<Option<ToplevelKey>>> for Tople
                 let toplevel_key = key.lock().unwrap().unwrap();
                 state.dispatch_event(ToplevelEvent::Parent { key: toplevel_key, parent });
             },
-            _ => todo!(),
+            _ => {},
         }
     }
 }
