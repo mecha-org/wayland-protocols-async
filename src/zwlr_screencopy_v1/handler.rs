@@ -67,8 +67,8 @@ impl ScreencopyHandler {
         let (globals, mut event_queue) = globals::registry_queue_init::<ScreencopyState>(&conn).unwrap();
         let qh = event_queue.handle();
         let screencopy_manager = globals
-            .bind::<ZwlrScreencopyManagerV1, _, _>(&qh, core::ops::RangeInclusive::new(3, 3), ())
-            .map_err(|_| "compositor does not implement screencopy manager (v3).").unwrap();
+            .bind::<ZwlrScreencopyManagerV1, _, _>(&qh, core::ops::RangeInclusive::new(1, 3), ())
+            .map_err(|_| "compositor does not implement screencopy manager (v1..3).").unwrap();
         let seat = globals
             .bind::<WlSeat, _, _>(&qh, core::ops::RangeInclusive::new(1, 1), ())
             .map_err(|_| "failed to retrieve the seat from global.")

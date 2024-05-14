@@ -20,6 +20,7 @@ pub enum ToplevelMessage {
     UnsetMaximize { key: ToplevelKey, reply_to: oneshot::Sender<Result<bool, ToplevelHandlerError>> },
     UnsetMinimize { key: ToplevelKey, reply_to: oneshot::Sender<Result<bool, ToplevelHandlerError>> },
     Close { key: ToplevelKey, reply_to: oneshot::Sender<Result<bool, ToplevelHandlerError>> },
+    CloseAll { reply_to: oneshot::Sender<Result<bool, ToplevelHandlerError>> }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -122,9 +123,8 @@ impl ToplevelHandler {
         let (globals, mut event_queue) = globals::registry_queue_init::<ToplevelState>(&conn).unwrap();
         let qh = event_queue.handle();
 
-        let _toplevel_manager = globals
-            .bind::<ZwlrForeignToplevelManagerV1, _, _>(&qh, core::ops::RangeInclusive::new(3, 3), ())
-            .map_err(|_| "compositor does not implement foreign toplevel manager (v3).").unwrap();
+        let _toplevel_manager = globals.bind::<ZwlrForeignToplevelManagerV1, _, _>(&qh, core::ops::RangeInclusive::new(1, 3), ())
+            .map_err(|_| "compositor does not implement foreign toplevel (v1..3).").unwrap();
 
         let seat = globals
             .bind::<WlSeat, _, _>(&qh, core::ops::RangeInclusive::new(1, 1), ())
@@ -331,6 +331,12 @@ impl ToplevelHandler {
                                 },
                             };
                             let _ = reply_to.send(result);
+                        },
+                        ToplevelMessage::CloseAll { reply_to } => {
+                            for (_, t) in toplevel_state.toplevels.iter() {
+                                t._handle.close();
+                            }
+                            let _ = reply_to.send(Ok(true));
                         },
                     }
                 }
