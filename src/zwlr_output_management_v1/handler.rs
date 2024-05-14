@@ -103,8 +103,8 @@ impl OutputManagementHandler {
         let qh = event_queue.handle();
 
         let output_manager = globals
-            .bind::<ZwlrOutputManagerV1, _, _>(&qh, core::ops::RangeInclusive::new(4, 4), ())
-            .map_err(|_| "compositor does not implement output manager (v4).").unwrap();
+            .bind::<ZwlrOutputManagerV1, _, _>(&qh, core::ops::RangeInclusive::new(1, 4), ())
+            .map_err(|_| "compositor does not implement output manager (v1..4).").unwrap();
 
         let mut state = OutputManagementState {
             event_tx,

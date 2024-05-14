@@ -44,9 +44,9 @@ impl InputMethodHandler {
         let (globals, mut event_queue) = globals::registry_queue_init::<InputMethodState>(&conn).unwrap();
         let qh = event_queue.handle();
 
-        let _input_manager = globals
+        let input_manager = globals
             .bind::<ZwpInputMethodManagerV2, _, _>(&qh, core::ops::RangeInclusive::new(1, 1), ())
-            .map_err(|_| "compositor does not implement input method manager (v1).").unwrap();
+            .map_err(|_| "compositor does not implement input method (v1).").unwrap();
         let seat = globals
             .bind::<WlSeat, _, _>(&qh, core::ops::RangeInclusive::new(1, 1), ())
             .map_err(|_| "failed to retrieve the seat from global.")
@@ -57,7 +57,7 @@ impl InputMethodHandler {
             .unwrap();
 
         // bind the input method
-        let input_method = _input_manager.get_input_method(&seat, &qh, ());
+        let input_method = input_manager.get_input_method(&seat, &qh, ());
 
         let mut state = InputMethodState {
             event_tx,

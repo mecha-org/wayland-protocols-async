@@ -48,7 +48,7 @@ impl SessionLockHandler {
 
         let session_lock_manager = globals
             .bind::<ExtSessionLockManagerV1, _, _>(&qh, core::ops::RangeInclusive::new(1, 1), ())
-            .map_err(|_| "compositor does not implement ext session lock manager (v1).").unwrap();
+            .map_err(|_| "compositor does not implement ext session lock (v1).").unwrap();
         let seat = globals
             .bind::<WlSeat, _, _>(&qh, core::ops::RangeInclusive::new(1, 1), ())
             .map_err(|_| "failed to retrieve the seat from global.")
