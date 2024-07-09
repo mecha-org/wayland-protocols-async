@@ -1,3 +1,4 @@
+use std::num::Wrapping;
 use tokio::{sync::mpsc::{Sender, Receiver}, io::unix::AsyncFd};
 use wayland_client::{EventQueue, protocol::{wl_seat::{WlSeat, self}, wl_registry::{WlRegistry, self}, wl_output::{WlOutput, self}}, globals::{self, GlobalListContents}, Connection, QueueHandle, Dispatch, WEnum, backend::protocol::WEnumError};
 use wayland_protocols::wp::text_input::zv3::client::zwp_text_input_v3::{ChangeCause, ContentHint, ContentPurpose};
@@ -8,7 +9,7 @@ pub enum InputMethodMessage {
     CommitString { text: String },
     SetPreeditString { text: String, cursor_begin: i32, cursor_end: i32 },
     DeleteSurroundingText { before_length: u32, after_length: u32 },
-    Commit { serial: u32 },
+    Commit,
     // GetInputPopupSurface,
     // GrabKeyboard,
 }
@@ -29,6 +30,7 @@ pub struct InputMethodState {
     input_method: ZwpInputMethodV2,
     seat: Option<WlSeat>,
     output: Option<WlOutput>,
+    serial: Wrapping<u32>,
 }
 
 pub struct InputMethodHandler {
@@ -64,6 +66,7 @@ impl InputMethodHandler {
             input_method,
             seat: Some(seat),
             output: Some(output),
+            serial: Wrapping(0),
         };
 
         event_queue.roundtrip(&mut state).unwrap();
@@ -119,8 +122,8 @@ impl InputMethodHandler {
                         InputMethodMessage::DeleteSurroundingText { before_length, after_length } => {
                             input_method_state.input_method.delete_surrounding_text(before_length, after_length)
                         },
-                        InputMethodMessage::Commit { serial } => {
-                            input_method_state.input_method.commit(serial)
+                        InputMethodMessage::Commit => {
+                            input_method_state.input_method.commit(input_method_state.serial.0);
                         },
                     }
                 }
@@ -223,8 +226,10 @@ impl Dispatch<ZwpInputMethodV2, ()> for InputMethodState {
                 state.dispatch_event(InputMethodEvent::Activate),
             zwp_input_method_v2::Event::Deactivate =>
                 state.dispatch_event(InputMethodEvent::Deactivate),
-            zwp_input_method_v2::Event::Done =>
-                state.dispatch_event(InputMethodEvent::Done),
+            zwp_input_method_v2::Event::Done => {
+                state.serial += Wrapping(1u32);
+                state.dispatch_event(InputMethodEvent::Done);
+            }  
             zwp_input_method_v2::Event::SurroundingText { text, cursor, anchor } =>
                 state.dispatch_event(InputMethodEvent::SurroundingText { text, cursor, anchor }),
             zwp_input_method_v2::Event::TextChangeCause { cause } => {
