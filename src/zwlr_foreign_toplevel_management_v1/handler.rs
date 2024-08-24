@@ -173,8 +173,8 @@ pub struct Toplevel {
 
 #[derive(Debug, Clone)]
 pub struct ToplevelMeta {
-    app_id: String,
-    title: String,
+    pub app_id: String,
+    pub title: String,
     state: Option<Vec<ToplevelWState>>,
 }
 
