@@ -1,5 +1,5 @@
 use slotmap::{new_key_type, SlotMap};
-use std::sync::Mutex;
+use std::{collections::HashMap, sync::Mutex};
 use tokio::{
     io::unix::AsyncFd,
     sync::{
@@ -34,6 +34,9 @@ pub enum ToplevelMessage {
     GetToplevelMeta {
         key: ToplevelKey,
         reply_to: oneshot::Sender<Option<ToplevelMeta>>,
+    },
+    GetToplevelsWithMeta {
+        reply_to: oneshot::Sender<HashMap<ToplevelKey, ToplevelMeta>>,
     },
     Activate {
         key: ToplevelKey,
@@ -175,7 +178,7 @@ pub struct Toplevel {
 pub struct ToplevelMeta {
     pub app_id: String,
     pub title: String,
-    state: Option<Vec<ToplevelWState>>,
+    pub state: Option<Vec<ToplevelWState>>,
 }
 
 impl Toplevel {
@@ -278,6 +281,17 @@ impl ToplevelHandler {
                     match msg.unwrap() {
                         ToplevelMessage::GetToplevels { reply_to } => {
                             let _ = reply_to.send(toplevel_state.toplevels.keys().collect());
+                        },
+                        ToplevelMessage::GetToplevelsWithMeta { reply_to } => {
+                            let mut top_levels_detailed = HashMap::new();
+                            for tl in &toplevel_state.toplevels {
+                                top_levels_detailed.insert(tl.0, ToplevelMeta {
+                                    app_id: tl.1.app_id.clone(),
+                                    title: tl.1.title.clone(),
+                                    state: tl.1.state.clone(),
+                                });
+                            }
+                            let _ = reply_to.send(top_levels_detailed);
                         },
                         ToplevelMessage::GetToplevelMeta { key, reply_to } => {
                             let toplevel_meta = match toplevel_state.toplevels.get(key) {
