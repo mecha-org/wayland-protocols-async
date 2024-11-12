@@ -1,17 +1,36 @@
-use tokio::{sync::mpsc::{Sender, Receiver}, io::unix::AsyncFd};
-use wayland_client::{globals::{self, GlobalListContents}, protocol::{wl_output::{self, WlOutput}, wl_registry::{self, WlRegistry}, wl_seat::{self, WlSeat}}, Connection, Dispatch, EventQueue, QueueHandle, WEnum};
-use wayland_protocols_misc::zwp_virtual_keyboard_v1::client::{zwp_virtual_keyboard_manager_v1::ZwpVirtualKeyboardManagerV1, zwp_virtual_keyboard_v1::ZwpVirtualKeyboardV1};
 use std::time::Instant;
+use tokio::{
+    io::unix::AsyncFd,
+    sync::mpsc::{Receiver, Sender},
+};
+use wayland_client::{
+    globals::{self, GlobalListContents},
+    protocol::{
+        wl_output::{self, WlOutput},
+        wl_registry::{self, WlRegistry},
+        wl_seat::{self, WlSeat},
+    },
+    Connection, Dispatch, EventQueue, QueueHandle, WEnum,
+};
+use wayland_protocols_misc::zwp_virtual_keyboard_v1::client::{
+    zwp_virtual_keyboard_manager_v1::ZwpVirtualKeyboardManagerV1,
+    zwp_virtual_keyboard_v1::ZwpVirtualKeyboardV1,
+};
 
 #[derive(Debug)]
 pub enum VirtualKeyboardMessage {
-    Key { keycode: u32, keymotion: KeyMotion }
+    Key {
+        keycode: u32,
+        keymotion: KeyMotion,
+    },
+    SetKeymap {
+        keymap_raw_fd: i32,
+        keymap_size: u32,
+    },
 }
 
 #[derive(Debug)]
-pub enum VirtualKeyboardEvent {
-    
-}
+pub enum VirtualKeyboardEvent {}
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 /// Enum to differentiate between a key press and a release
@@ -34,16 +53,26 @@ pub struct VirtualKeyboardHandler {
 }
 
 impl VirtualKeyboardHandler {
-    pub fn new(keymap_raw_fd: i32, keymap_size: u32, event_tx: Sender<VirtualKeyboardEvent>) -> Self {
+    pub fn new(
+        keymap_raw_fd: i32,
+        keymap_size: u32,
+        event_tx: Sender<VirtualKeyboardEvent>,
+    ) -> Self {
         let conn = wayland_client::Connection::connect_to_env()
             .map_err(|_| "could not connect to wayland socket, try setting WAYLAND_DISPLAY.")
             .unwrap();
-        let (globals, mut event_queue) = globals::registry_queue_init::<VirtualKeyboardState>(&conn).unwrap();
+        let (globals, mut event_queue) =
+            globals::registry_queue_init::<VirtualKeyboardState>(&conn).unwrap();
         let qh = event_queue.handle();
 
         let _virtual_keyboard_manager = globals
-            .bind::<ZwpVirtualKeyboardManagerV1, _, _>(&qh, core::ops::RangeInclusive::new(1, 1), ())
-            .map_err(|_| "compositor does not implement virtual keyboard (v1).").unwrap();
+            .bind::<ZwpVirtualKeyboardManagerV1, _, _>(
+                &qh,
+                core::ops::RangeInclusive::new(1, 1),
+                (),
+            )
+            .map_err(|_| "compositor does not implement virtual keyboard (v1).")
+            .unwrap();
         let seat = globals
             .bind::<WlSeat, _, _>(&qh, core::ops::RangeInclusive::new(1, 1), ())
             .map_err(|_| "failed to retrieve the seat from global.")
@@ -65,24 +94,23 @@ impl VirtualKeyboardHandler {
         };
 
         event_queue.roundtrip(&mut state).unwrap();
-    
-        VirtualKeyboardHandler {
-            event_queue,
-            state,
-        }
+
+        VirtualKeyboardHandler { event_queue, state }
     }
 
     pub async fn run(&mut self, mut msg_rx: Receiver<VirtualKeyboardMessage>) {
         let event_queue = &mut self.event_queue;
         let mut virtual_keyboard_state = &mut self.state;
-    
+
         loop {
             // This would be required if other threads were reading from the socket.
-            event_queue.dispatch_pending(&mut virtual_keyboard_state).unwrap();
+            event_queue
+                .dispatch_pending(&mut virtual_keyboard_state)
+                .unwrap();
             let read_guard = event_queue.prepare_read().unwrap();
             let fd = read_guard.connection_fd();
             let async_fd = AsyncFd::new(fd).unwrap();
-    
+
             tokio::select! {
                 async_guard = async_fd.readable() => {
                     println!("async readable1");
@@ -111,11 +139,15 @@ impl VirtualKeyboardHandler {
                     match msg.unwrap() {
                         VirtualKeyboardMessage::Key { keycode, keymotion } => {
                             let _ = virtual_keyboard_state.send_key(keycode, keymotion);
-                        },
+                        }
+                        VirtualKeyboardMessage::SetKeymap { keymap_raw_fd, keymap_size } => {
+                            let _ = virtual_keyboard_state.set_keymap(keymap_raw_fd, keymap_size);
+                        }
+                        ,
                     }
                 }
             }
-    
+
             // Send any new messages to the socket.
             let _ = event_queue.flush().expect("wayland connection closed");
         }
@@ -126,6 +158,10 @@ impl VirtualKeyboardState {
     pub fn send_key(&self, keycode: u32, keymotion: KeyMotion) {
         let time = self.get_time();
         let res = self.virtual_keyboard.key(time, keycode, keymotion as u32);
+    }
+
+    pub fn set_keymap(&self, keymap_raw_fd: i32, keymap_size: u32) {
+        let _ = self.virtual_keyboard.keymap(1, keymap_raw_fd, keymap_size);
     }
 
     fn dispatch_event(&self, event: VirtualKeyboardEvent) {

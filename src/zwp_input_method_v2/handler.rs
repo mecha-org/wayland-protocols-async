@@ -1,14 +1,40 @@
 use std::num::Wrapping;
-use tokio::{sync::mpsc::{Sender, Receiver}, io::unix::AsyncFd};
-use wayland_client::{EventQueue, protocol::{wl_seat::{WlSeat, self}, wl_registry::{WlRegistry, self}, wl_output::{WlOutput, self}}, globals::{self, GlobalListContents}, Connection, QueueHandle, Dispatch, WEnum, backend::protocol::WEnumError};
-use wayland_protocols::wp::text_input::zv3::client::zwp_text_input_v3::{ChangeCause, ContentHint, ContentPurpose};
-use wayland_protocols_misc::zwp_input_method_v2::client::{zwp_input_method_manager_v2::ZwpInputMethodManagerV2, zwp_input_method_v2::{self, ZwpInputMethodV2}};
+use tokio::{
+    io::unix::AsyncFd,
+    sync::mpsc::{Receiver, Sender},
+};
+use wayland_client::{
+    backend::protocol::WEnumError,
+    globals::{self, GlobalListContents},
+    protocol::{
+        wl_output::{self, WlOutput},
+        wl_registry::{self, WlRegistry},
+        wl_seat::{self, WlSeat},
+    },
+    Connection, Dispatch, EventQueue, QueueHandle, WEnum,
+};
+pub use wayland_protocols::wp::text_input::zv3::client::zwp_text_input_v3::{
+    ChangeCause, ContentHint, ContentPurpose,
+};
+use wayland_protocols_misc::zwp_input_method_v2::client::{
+    zwp_input_method_manager_v2::ZwpInputMethodManagerV2,
+    zwp_input_method_v2::{self, ZwpInputMethodV2},
+};
 
 #[derive(Debug)]
 pub enum InputMethodMessage {
-    CommitString { text: String },
-    SetPreeditString { text: String, cursor_begin: i32, cursor_end: i32 },
-    DeleteSurroundingText { before_length: u32, after_length: u32 },
+    CommitString {
+        text: String,
+    },
+    SetPreeditString {
+        text: String,
+        cursor_begin: i32,
+        cursor_end: i32,
+    },
+    DeleteSurroundingText {
+        before_length: u32,
+        after_length: u32,
+    },
     Commit,
     // GetInputPopupSurface,
     // GrabKeyboard,
@@ -19,9 +45,18 @@ pub enum InputMethodEvent {
     Activate,
     Deactivate,
     Done,
-    SurroundingText { text: String, cursor: u32, anchor: u32 },
-    TextChangeCause { cause: Result<ChangeCause, WEnumError> },
-    ContentType { hint: Result<ContentHint, WEnumError>, purpose: Result<ContentPurpose, WEnumError>},
+    SurroundingText {
+        text: String,
+        cursor: u32,
+        anchor: u32,
+    },
+    TextChangeCause {
+        cause: Result<ChangeCause, WEnumError>,
+    },
+    ContentType {
+        hint: Result<ContentHint, WEnumError>,
+        purpose: Result<ContentPurpose, WEnumError>,
+    },
     Unavailable,
 }
 
@@ -43,12 +78,14 @@ impl InputMethodHandler {
         let conn = wayland_client::Connection::connect_to_env()
             .map_err(|_| "could not connect to wayland socket, try setting WAYLAND_DISPLAY.")
             .unwrap();
-        let (globals, mut event_queue) = globals::registry_queue_init::<InputMethodState>(&conn).unwrap();
+        let (globals, mut event_queue) =
+            globals::registry_queue_init::<InputMethodState>(&conn).unwrap();
         let qh = event_queue.handle();
 
         let input_manager = globals
             .bind::<ZwpInputMethodManagerV2, _, _>(&qh, core::ops::RangeInclusive::new(1, 1), ())
-            .map_err(|_| "compositor does not implement input method (v1).").unwrap();
+            .map_err(|_| "compositor does not implement input method (v1).")
+            .unwrap();
         let seat = globals
             .bind::<WlSeat, _, _>(&qh, core::ops::RangeInclusive::new(1, 1), ())
             .map_err(|_| "failed to retrieve the seat from global.")
@@ -70,24 +107,23 @@ impl InputMethodHandler {
         };
 
         event_queue.roundtrip(&mut state).unwrap();
-    
-        InputMethodHandler {
-            event_queue,
-            state,
-        }
+
+        InputMethodHandler { event_queue, state }
     }
 
     pub async fn run(&mut self, mut msg_rx: Receiver<InputMethodMessage>) {
         let event_queue = &mut self.event_queue;
         let mut input_method_state = &mut self.state;
-    
+
         loop {
             // This would be required if other threads were reading from the socket.
-            event_queue.dispatch_pending(&mut input_method_state).unwrap();
+            event_queue
+                .dispatch_pending(&mut input_method_state)
+                .unwrap();
             let read_guard = event_queue.prepare_read().unwrap();
             let fd = read_guard.connection_fd();
             let async_fd = AsyncFd::new(fd).unwrap();
-    
+
             tokio::select! {
                 async_guard = async_fd.readable() => {
                     async_guard.unwrap().clear_ready();
@@ -128,7 +164,7 @@ impl InputMethodHandler {
                     }
                 }
             }
-    
+
             // Send any new messages to the socket.
             let _ = event_queue.flush().expect("wayland connection closed");
         }
@@ -211,7 +247,6 @@ impl Dispatch<ZwpInputMethodManagerV2, ()> for InputMethodState {
     }
 }
 
-
 impl Dispatch<ZwpInputMethodV2, ()> for InputMethodState {
     fn event(
         state: &mut Self,
@@ -222,29 +257,39 @@ impl Dispatch<ZwpInputMethodV2, ()> for InputMethodState {
         _: &QueueHandle<InputMethodState>,
     ) {
         match event {
-            zwp_input_method_v2::Event::Activate =>
-                state.dispatch_event(InputMethodEvent::Activate),
-            zwp_input_method_v2::Event::Deactivate =>
-                state.dispatch_event(InputMethodEvent::Deactivate),
+            zwp_input_method_v2::Event::Activate => {
+                state.dispatch_event(InputMethodEvent::Activate)
+            }
+            zwp_input_method_v2::Event::Deactivate => {
+                state.dispatch_event(InputMethodEvent::Deactivate)
+            }
             zwp_input_method_v2::Event::Done => {
                 state.serial += Wrapping(1u32);
                 state.dispatch_event(InputMethodEvent::Done);
-            }  
-            zwp_input_method_v2::Event::SurroundingText { text, cursor, anchor } =>
-                state.dispatch_event(InputMethodEvent::SurroundingText { text, cursor, anchor }),
+            }
+            zwp_input_method_v2::Event::SurroundingText {
+                text,
+                cursor,
+                anchor,
+            } => state.dispatch_event(InputMethodEvent::SurroundingText {
+                text,
+                cursor,
+                anchor,
+            }),
             zwp_input_method_v2::Event::TextChangeCause { cause } => {
                 state.dispatch_event(InputMethodEvent::TextChangeCause {
-                    cause: cause.into_result()
+                    cause: cause.into_result(),
                 })
-            },
+            }
             zwp_input_method_v2::Event::ContentType { hint, purpose } => {
                 state.dispatch_event(InputMethodEvent::ContentType {
                     hint: hint.into_result(),
                     purpose: purpose.into_result(),
                 })
-            },
-            zwp_input_method_v2::Event::Unavailable =>
-            state.dispatch_event(InputMethodEvent::Unavailable),
+            }
+            zwp_input_method_v2::Event::Unavailable => {
+                state.dispatch_event(InputMethodEvent::Unavailable)
+            }
             _ => {}
         }
     }
