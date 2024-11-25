@@ -27,6 +27,11 @@ pub enum VirtualKeyboardMessage {
         keymap_raw_fd: i32,
         keymap_size: u32,
     },
+    SetModifiers { 
+        depressed: u32, 
+        latched: u32, 
+        locked: u32
+    }
 }
 
 #[derive(Debug)]
@@ -39,9 +44,17 @@ pub enum KeyMotion {
     Release = 0,
 }
 
+#[derive(Debug, Default,  PartialEq, Eq, Clone)]
+pub struct Modifiers {
+    depressed: u32,
+    latched: u32,
+    locked: u32,
+}
+
 pub struct VirtualKeyboardState {
     event_tx: Sender<VirtualKeyboardEvent>,
     virtual_keyboard: ZwpVirtualKeyboardV1,
+    modifiers: Modifiers,
     init_time: std::time::Instant,
     seat: Option<WlSeat>,
     output: Option<WlOutput>,
@@ -91,6 +104,7 @@ impl VirtualKeyboardHandler {
             init_time: Instant::now(),
             seat: Some(seat),
             output: Some(output),
+            modifiers: Modifiers::default()
         };
 
         event_queue.roundtrip(&mut state).unwrap();
@@ -143,6 +157,11 @@ impl VirtualKeyboardHandler {
                         VirtualKeyboardMessage::SetKeymap { keymap_raw_fd, keymap_size } => {
                             let _ = virtual_keyboard_state.set_keymap(keymap_raw_fd, keymap_size);
                         }
+                        VirtualKeyboardMessage::SetModifiers { depressed, latched, locked } => {
+                            let modifiers = Modifiers { depressed, latched, locked };
+                            virtual_keyboard_state.modifiers = modifiers.clone();
+                            let _ = virtual_keyboard_state.set_modifiers(modifiers);
+                        }
                         ,
                     }
                 }
@@ -157,11 +176,17 @@ impl VirtualKeyboardHandler {
 impl VirtualKeyboardState {
     pub fn send_key(&self, keycode: u32, keymotion: KeyMotion) {
         let time = self.get_time();
+        let _ = self.set_modifiers(self.modifiers.clone());
         let res = self.virtual_keyboard.key(time, keycode, keymotion as u32);
     }
 
     pub fn set_keymap(&self, keymap_raw_fd: i32, keymap_size: u32) {
         let _ = self.virtual_keyboard.keymap(1, keymap_raw_fd, keymap_size);
+    }
+
+    pub fn set_modifiers(&self, modifiers: Modifiers) {
+        let Modifiers { depressed, latched, locked } = modifiers;
+        let _ = self.virtual_keyboard.modifiers(depressed, latched, locked, 0);
     }
 
     fn dispatch_event(&self, event: VirtualKeyboardEvent) {
