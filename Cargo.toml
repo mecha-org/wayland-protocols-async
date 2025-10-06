@@ -1,7 +1,7 @@
 [package]
 name = "wayland-protocols-async"
 resolver = "2"
-version = "0.1.0"
+version = "1.1.0"
 authors = ["Shoaib Merchant <shoaibm@mechasystems.com>"]
 description = "Wayland client protocols implemented in async as handlers using the Actor-model and tokio messaging"
 documentation = "https://github.com/mecha-org/wayland-async"
